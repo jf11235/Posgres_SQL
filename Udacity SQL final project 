@@ -1,0 +1,116 @@
+QUESTION 1
+SELECT COUNT (rental_id), c.name, f.title
+    FROM category c
+    JOIN film_category fc 
+    ON c.category_id = fc.category_id
+    JOIN film f 
+    ON f.film_id = fc.film_id
+    JOIN inventory i 
+    ON i.film_id = f.film_id
+    JOIN rental r 
+    ON i.inventory_id = r.inventory_id
+    WHERE c.name = 'Animation' OR 
+        c.name = 'Children' OR
+        c.name = 'Classics' OR 
+        c.name ='Comedy' OR 
+        c.name ='Family' OR 
+        c.name ='Music'
+GROUP BY c.name, f.title
+ORDER BY c.name,f.title, COUNT (rental_id) DESC
+-------------------
+
+SELECT t1.name, t1.title, count(*) over (partition by name order by rental_count) count_of_rentals
+FROM
+(SELECT COUNT (rental_id) rental_count, c.name, f.title
+    FROM category c
+    JOIN film_category fc 
+    ON c.category_id = fc.category_id
+    JOIN film f 
+    ON f.film_id = fc.film_id
+    JOIN inventory i 
+    ON i.film_id = f.film_id
+    JOIN rental r 
+    ON i.inventory_id = r.inventory_id
+    WHERE c.name = 'Animation' OR 
+        c.name = 'Children' OR
+        c.name = 'Classics' OR 
+        c.name ='Comedy' OR 
+        c.name ='Family' OR 
+        c.name ='Music'
+GROUP BY c.name, f.title
+ORDER BY c.name,f.title, COUNT (rental_id) DESC) t1
+
+
+QUESTION 2
+WITH rental_duration AS 
+
+    (SELECT return_date, rental_date, DATE_PART('day', return_date - rental_date) AS rental_duration
+    FROM rental),
+
+WITH quartile AS 
+
+    (SELECT title, name AS category,  NTILE(4) OVER (ORDER BY rental_duration) AS quartile
+    FROM
+        (SELECT COUNT (rental_id)AS rental_count, c.name, f.title
+            FROM category c
+            JOIN film_category fc 
+            ON c.category_id = fc.category_id
+            JOIN film f 
+            ON f.film_id = fc.film_id
+            JOIN inventory i 
+            ON i.film_id = f.film_id
+            JOIN rental r 
+            ON i.inventory_id = r.inventory_id
+            WHERE c.name = 'Animation' OR 
+                c.name = 'Children' OR
+                c.name = 'Classics' OR 
+                c.name ='Comedy' OR 
+                c.name ='Family' OR 
+                c.name ='Music'
+        GROUP BY c.name, f.title
+        ORDER BY c.name, f.title, rental_count DESC) 
+    )
+
+SELECT title,name, quartile
+
+####
+NTILE(4)
+SELECT data, ntile(100) over (order by data) AS percentile
+
+
+NTILE(4) OVER (ORDER BY rental_count) AS quartile
+####
+
+
+QUESTION 2 
+Which days of the week have the greatest rentals? What categories are they in? 
+
+
+/* Each of these two work independantly but they dont work together*/
+
+With dow AS
+    (SELECT extract(dow FROM rental_date) AS day_of_week
+    FROM rental), 
+
+cat_count  AS
+    (SELECT c.name, COUNT (*), rental_date
+
+    FROM category c
+            JOIN film_category fc 
+            ON c.category_id = fc.category_id
+            JOIN film f 
+            ON f.film_id = fc.film_id
+            JOIN inventory i 
+            ON i.film_id = f.film_id
+            JOIN rental r 
+            ON i.inventory_id = r.inventory_id
+    GROUP BY c.name, rental_date)
+
+
+SELECT name, day_of_week, COUNT (*)
+FROM dow, cat_count
+GROUP BY cat_count.name, dow.day_of_week
+
+
+
+  
